@@ -1,6 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { Send, Bot, User, ExternalLink, RefreshCw } from 'lucide-react'
 import { useRef, useEffect, useState } from 'react'
 
@@ -15,9 +16,11 @@ const preguntasRapidas = [
 
 export default function DashboardPage() {
   const [input, setInput] = useState('')
-  const { messages, sendMessage, status, regenerate } = useChat()
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
+  })
   const isLoading = status === 'submitted' || status === 'streaming'
-  const reload = () => regenerate()
+  const reload = () => setMessages([])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value)
@@ -109,7 +112,7 @@ export default function DashboardPage() {
                   : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'
                 }`}
             >
-              {m.parts ? m.parts.map(p => p.type === 'text' ? p.text : '').join('') : (m as any).content}
+              {m.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map(p => p.text).join('') || ''}
             </div>
           </div>
         ))}

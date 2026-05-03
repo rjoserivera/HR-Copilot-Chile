@@ -1,5 +1,5 @@
 import { generateText } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
+import type { TextPart, FilePart } from 'ai'
 import { NextResponse } from 'next/server'
 import { SYSTEM_PROMPT } from '@/lib/system-prompt'
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const contentParts: any[] = []
+    const contentParts: (TextPart | FilePart)[] = []
 
     cvTexts.forEach((dataUrl, i) => {
       const match = dataUrl.match(/^data:(.+);base64,(.+)$/)
@@ -34,8 +34,8 @@ export async function POST(req: Request) {
           })
           contentParts.push({
             type: 'file',
-            data: Buffer.from(base64Data, 'base64'),
-            mimeType: 'application/pdf',
+            data: new Uint8Array(Buffer.from(base64Data, 'base64')),
+            mediaType: 'application/pdf',
           })
         } else {
           contentParts.push({
@@ -81,7 +81,7 @@ ${perfilCargo}
     contentParts.push({ type: 'text', text: promptText })
 
     const { text } = await generateText({
-      model: anthropic('claude-3-5-sonnet-20241022'),
+      model: 'anthropic/claude-sonnet-4-5',
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: contentParts }]
     })

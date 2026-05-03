@@ -1,5 +1,4 @@
-import { streamText } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
+import { streamText, convertToModelMessages } from 'ai'
 import { SYSTEM_PROMPT } from '@/lib/system-prompt'
 
 export const maxDuration = 30
@@ -7,15 +6,10 @@ export const maxDuration = 30
 export async function POST(req: Request) {
   const { messages } = await req.json()
 
-  const coreMessages = messages.map((m: any) => ({
-    role: m.role,
-    content: m.content || (m.parts ? m.parts.map((p: any) => p.text).join('') : '')
-  }))
-
-  const result = await streamText({
-    model: anthropic('claude-3-5-sonnet-20241022'),
+  const result = streamText({
+    model: 'anthropic/claude-sonnet-4-5',
     system: SYSTEM_PROMPT,
-    messages: coreMessages,
+    messages: await convertToModelMessages(messages),
   })
 
   return result.toUIMessageStreamResponse()
