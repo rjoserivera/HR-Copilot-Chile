@@ -1,9 +1,35 @@
 import { generateText } from 'ai'
-import type { TextPart, FilePart } from 'ai'
 import { NextResponse } from 'next/server'
 import { SYSTEM_PROMPT } from '@/lib/system-prompt'
+import pdf from 'pdf-parse'
 
 export const maxDuration = 60
+
+async function extractTextFromDataUrl(dataUrl: string, fileName: string): Promise<string> {
+  const match = dataUrl.match(/^data:(.+);base64,(.+)$/)
+  
+  if (!match) {
+    // Fallback: es texto plano
+    return dataUrl
+  }
+  
+  const mimeType = match[1]
+  const base64Data = match[2]
+  const buffer = Buffer.from(base64Data, 'base64')
+  
+  if (mimeType === 'application/pdf') {
+    try {
+      const pdfData = await pdf(buffer)
+      return pdfData.text || `[No se pudo extraer texto del PDF: ${fileName}]`
+    } catch (error) {
+      console.error(`Error parsing PDF ${fileName}:`, error)
+      return `[Error al leer el PDF: ${fileName}]`
+    }
+  }
+  
+  // Para otros tipos (txt), decodificar como texto
+  return buffer.toString('utf8')
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,42 +45,16 @@ export async function POST(req: Request) {
       )
     }
 
-    const contentParts: (TextPart | FilePart)[] = []
+    // Extraer texto de todos los CVs
+    const cvsContenido: string[] = []
+    for (let i = 0; i < cvTexts.length; i++) {
+      const texto = await extractTextFromDataUrl(cvTexts[i], cvNombres[i] || `Candidato ${i + 1}`)
+      cvsContenido.push(`--- CV ${i + 1}: ${cvNombres[i] || `Candidato ${i + 1}`} ---\n${texto}`)
+    }
 
-    cvTexts.forEach((dataUrl, i) => {
-      const match = dataUrl.match(/^data:(.+);base64,(.+)$/)
-      if (match) {
-        const mimeType = match[1]
-        const base64Data = match[2]
-        
-        if (mimeType === 'application/pdf') {
-          contentParts.push({
-            type: 'text',
-            text: `(A continuación se adjunta el CV ${i + 1}: ${cvNombres[i] || `Candidato ${i + 1}`})`
-          })
-          contentParts.push({
-            type: 'file',
-            data: new Uint8Array(Buffer.from(base64Data, 'base64')),
-            mediaType: 'application/pdf',
-          })
-        } else {
-          contentParts.push({
-            type: 'text',
-            text: `--- CV ${i + 1}: ${cvNombres[i] || `Candidato ${i + 1}`} ---\n${Buffer.from(base64Data, 'base64').toString('utf8')}`
-          })
-        }
-      } else {
-        // Fallback si es texto plano viejo
-        contentParts.push({
-            type: 'text',
-            text: `--- CV ${i + 1}: ${cvNombres[i] || `Candidato ${i + 1}`} ---\n${dataUrl}`
-        })
-      }
-    })
-
-    const promptText = `
-Analiza los siguientes CVs adjuntos para el cargo descrito. 
-Responde SOLO en JSON con este formato exacto, sin texto adicional:
+    const prompt = `
+Analiza los siguientes CVs para el cargo descrito. 
+Responde SOLO en JSON con este formato exacto, sin texto adicional ni backticks:
 
 {
   "candidatos": [
@@ -77,13 +77,15 @@ Solo evalúa competencias, experiencia y formación relevante para el cargo.
 
 PERFIL DEL CARGO:
 ${perfilCargo}
+
+CURRÍCULUMS A ANALIZAR:
+${cvsContenido.join('\n\n')}
 `
-    contentParts.push({ type: 'text', text: promptText })
 
     const { text } = await generateText({
-      model: 'anthropic/claude-sonnet-4-5',
+      model: 'anthropic/claude-sonnet-4.5',
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: contentParts }]
+      prompt: prompt,
     })
 
     // Limpiar posibles backticks de markdown
