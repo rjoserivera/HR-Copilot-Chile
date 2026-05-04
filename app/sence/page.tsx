@@ -21,8 +21,8 @@ export default function SencePage() {
 
   const buscarOrientacion = async () => {
     if (!necesidad.trim()) return
-    const prompt = `Dame orientación sobre capacitación SENCE para el área "${area}" con la siguiente necesidad: "${necesidad}". 
-    Incluye qué tipo de cursos recomiendas, cómo funciona la Franquicia Tributaria SENCE y el link al catálogo oficial.`
+    const prompt = `Área: ${area || 'General'}. Necesidad: "${necesidad}".
+Recomiéndame 2 o 3 tipos de cursos SENCE concretos para esta necesidad. Solo nombre del curso y por qué sirve. Breve y directo. Incluye el link al catálogo al final.`
     sendMessage({ text: prompt })
   }
 

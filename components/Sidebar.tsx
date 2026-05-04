@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Scale,
   Users,
-  Bell,
   GraduationCap,
   Building2,
   ArrowLeft,
@@ -17,7 +16,6 @@ const nav = [
   { href: '/dashboard',   label: 'Consulta Laboral',   icon: MessageSquare },
   { href: '/finiquito',   label: 'Finiquito',           icon: Scale },
   { href: '/curriculums', label: 'Filtro de CVs',       icon: Users },
-  { href: '/alertas',     label: 'Alertas',             icon: Bell },
   { href: '/sence',       label: 'SENCE',               icon: GraduationCap },
 ]
 

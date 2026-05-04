@@ -180,6 +180,8 @@ export default function CurriculumsPage() {
 }
 
 function TarjetaCandidato({ candidato: c, posicion }: { candidato: Candidato; posicion: number }) {
+  const [expandido, setExpandido] = useState(false)
+
   const colorRec = {
     Entrevistar: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     Considerar: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -226,30 +228,40 @@ function TarjetaCandidato({ candidato: c, posicion }: { candidato: Candidato; po
 
       <p className="text-xs text-slate-600 mb-3 leading-relaxed">{c.resumen}</p>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <p className="text-xs font-medium text-emerald-700 mb-1.5">✅ Fortalezas</p>
-          <ul className="space-y-1">
-            {c.fortalezas.map((f, i) => (
-              <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                {f}
-              </li>
-            ))}
-          </ul>
+      {/* Botón expandir */}
+      <button
+        onClick={() => setExpandido(!expandido)}
+        className="text-xs text-violet-600 hover:text-violet-800 font-medium flex items-center gap-1 transition-colors"
+      >
+        {expandido ? '▲ Ocultar detalles' : '▼ Ver fortalezas y brechas'}
+      </button>
+
+      {expandido && (
+        <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
+          <div>
+            <p className="text-xs font-medium text-emerald-700 mb-1.5">✅ Fortalezas</p>
+            <ul className="space-y-1">
+              {c.fortalezas.map((f, i) => (
+                <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-orange-700 mb-1.5">⚠️ Brechas</p>
+            <ul className="space-y-1">
+              {c.brechas.map((b, i) => (
+                <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-orange-400 mt-1.5 flex-shrink-0" />
+                  {b}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-        <div>
-          <p className="text-xs font-medium text-orange-700 mb-1.5">⚠️ Brechas</p>
-          <ul className="space-y-1">
-            {c.brechas.map((b, i) => (
-              <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-orange-400 mt-1.5 flex-shrink-0" />
-                {b}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

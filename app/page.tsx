@@ -5,7 +5,6 @@ import {
   MessageSquare,
   FileText,
   Users,
-  Bell,
   GraduationCap,
   Scale,
   ExternalLink,
@@ -37,14 +36,6 @@ const modulos = [
     descripcion: 'Sube currículums y el agente rankea candidatos según el perfil del cargo.',
     color: 'bg-violet-50 text-violet-600 border-violet-100',
     badge: 'IA',
-  },
-  {
-    href: '/alertas',
-    icon: Bell,
-    titulo: 'Alertas de Contratos',
-    descripcion: 'Registra trabajadores y recibe alertas de vencimientos, renovaciones y derechos.',
-    color: 'bg-orange-50 text-orange-600 border-orange-100',
-    badge: null,
   },
   {
     href: '/sence',

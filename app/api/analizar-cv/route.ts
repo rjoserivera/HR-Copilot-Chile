@@ -1,35 +1,11 @@
 import { generateText } from 'ai'
+import { anthropic } from '@ai-sdk/anthropic'
 import { NextResponse } from 'next/server'
 import { SYSTEM_PROMPT } from '@/lib/system-prompt'
-import pdf from 'pdf-parse'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse')
 
 export const maxDuration = 60
-
-async function extractTextFromDataUrl(dataUrl: string, fileName: string): Promise<string> {
-  const match = dataUrl.match(/^data:(.+);base64,(.+)$/)
-  
-  if (!match) {
-    // Fallback: es texto plano
-    return dataUrl
-  }
-  
-  const mimeType = match[1]
-  const base64Data = match[2]
-  const buffer = Buffer.from(base64Data, 'base64')
-  
-  if (mimeType === 'application/pdf') {
-    try {
-      const pdfData = await pdf(buffer)
-      return pdfData.text || `[No se pudo extraer texto del PDF: ${fileName}]`
-    } catch (error) {
-      console.error(`Error parsing PDF ${fileName}:`, error)
-      return `[Error al leer el PDF: ${fileName}]`
-    }
-  }
-  
-  // Para otros tipos (txt), decodificar como texto
-  return buffer.toString('utf8')
-}
 
 export async function POST(req: Request) {
   try {
@@ -45,16 +21,46 @@ export async function POST(req: Request) {
       )
     }
 
-    // Extraer texto de todos los CVs
-    const cvsContenido: string[] = []
+    const contentParts: any[] = []
+
     for (let i = 0; i < cvTexts.length; i++) {
-      const texto = await extractTextFromDataUrl(cvTexts[i], cvNombres[i] || `Candidato ${i + 1}`)
-      cvsContenido.push(`--- CV ${i + 1}: ${cvNombres[i] || `Candidato ${i + 1}`} ---\n${texto}`)
+      const dataUrl = cvTexts[i]
+      const match = dataUrl.match(/^data:(.+);base64,(.+)$/)
+      
+      let textContent = ''
+
+      if (match) {
+        const mimeType = match[1]
+        const base64Data = match[2]
+        
+        if (mimeType === 'application/pdf') {
+          // Extraer texto del PDF usando pdf-parse
+          try {
+            const buffer = Buffer.from(base64Data, 'base64')
+            const pdfData = await pdfParse(buffer)
+            textContent = pdfData.text
+          } catch (e) {
+            console.error('Error al parsear PDF:', e)
+            textContent = '[No se pudo leer el contenido de este PDF]'
+          }
+        } else {
+          // Archivo de texto plano viejo u otro
+          textContent = Buffer.from(base64Data, 'base64').toString('utf8')
+        }
+      } else {
+        // Fallback si ya era texto plano
+        textContent = dataUrl
+      }
+
+      contentParts.push({
+        type: 'text',
+        text: `--- CV ${i + 1}: ${cvNombres[i] || `Candidato ${i + 1}`} ---\n${textContent}`
+      })
     }
 
-    const prompt = `
-Analiza los siguientes CVs para el cargo descrito. 
-Responde SOLO en JSON con este formato exacto, sin texto adicional ni backticks:
+    const promptText = `
+Analiza los siguientes CVs adjuntos para el cargo descrito. 
+Responde SOLO en JSON con este formato exacto, sin texto adicional:
 
 {
   "candidatos": [
@@ -77,15 +83,13 @@ Solo evalúa competencias, experiencia y formación relevante para el cargo.
 
 PERFIL DEL CARGO:
 ${perfilCargo}
-
-CURRÍCULUMS A ANALIZAR:
-${cvsContenido.join('\n\n')}
 `
+    contentParts.push({ type: 'text', text: promptText })
 
     const { text } = await generateText({
-      model: 'anthropic/claude-sonnet-4.5',
+      model: anthropic('claude-haiku-4-5-20251001'),
       system: SYSTEM_PROMPT,
-      prompt: prompt,
+      messages: [{ role: 'user', content: contentParts }]
     })
 
     // Limpiar posibles backticks de markdown
@@ -101,3 +105,4 @@ ${cvsContenido.join('\n\n')}
     return NextResponse.json({ error: 'Error al analizar los CVs. Intenta de nuevo.' }, { status: 500 })
   }
 }
+
